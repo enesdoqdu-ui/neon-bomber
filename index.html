@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>NEON BOMBER: PRECISION</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+        body { margin: 0; background: #05050a; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; font-family: 'Orbitron', sans-serif; touch-action: none; color: #00fff2; }
+        #ui { position: absolute; top: 10px; text-align: center; width: 100%; text-shadow: 0 0 10px #00fff2; z-index: 5; }
+        canvas { box-shadow: 0 0 50px #ff005544; background: #000; border: 2px solid #1a1a4a; border-radius: 8px; }
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+        #startBtn { padding: 20px 50px; font-family: 'Orbitron', sans-serif; font-size: 1.8rem; background: transparent; border: 3px solid #ffcc00; color: #ffcc00; cursor: pointer; border-radius: 15px; box-shadow: 0 0 20px #ffcc00; font-weight: 900; }
+        #startBtn:hover { background: #ffcc00; color: #000; }
+    </style>
+</head>
+<body>
+
+    <div id="overlay">
+        <h1 style="color:#ff0055; letter-spacing:10px; margin-bottom:20px;">NEON BOMBER</h1>
+        <button id="startBtn">BAŞLA</button>
+        <div style="color:#fff; opacity:0.6; margin-top:20px; font-size:0.8rem; text-align:center;">
+            KAYDIR: YÜRÜ | DOKUN: BOMBA<br>WASD: YÜRÜ | SPACE: BOMBA
+        </div>
+    </div>
+
+    <div id="ui">
+        <div style="font-size: 1.2rem;">SKOR: <span id="score">0</span></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreEl = document.getElementById("score");
+        const overlay = document.getElementById("overlay");
+        const startBtn = document.getElementById("startBtn");
+
+        // 1: Duvar, 2: Kırılabilir, 0: Yol
+        let map = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,2,2,2,0,0,0,2,2,2,0,0,1],
+            [1,0,1,2,1,2,1,2,1,2,1,2,1,0,1],
+            [1,2,2,0,2,2,2,0,2,2,2,0,2,2,1],
+            [1,2,1,2,1,2,1,2,1,2,1,2,1,2,1],
+            [1,0,0,2,2,2,0,0,0,2,2,2,0,0,1],
+            [1,0,1,2,1,2,1,2,1,2,1,2,1,0,1],
+            [1,0,0,2,2,2,2,2,2,2,2,2,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+
+        const rows = map.length; const cols = map[0].length;
+        const size = Math.min(window.innerWidth / cols, window.innerHeight * 0.75 / rows);
+        canvas.width = cols * size; canvas.height = rows * size;
+
+        let gameStarted = false;
+        let score = 0;
+        
+        // HIZ: İstediğin gibi yavaş ve dengeli
+        const moveSpeed = 0.06;
+        const enemySpeed = moveSpeed * 0.6;
+
+        let player = { x: 1, y: 1, dir: {x:0, y:0}, nextDir: {x:0, y:0}, bombs: [] };
+        let enemies = [{ x: 13, y: 7, dir: {x:-1, y:0} }];
+        let explosions = [];
+
+        startBtn.onclick = () => { overlay.style.display = "none"; gameStarted = true; };
+
+        // MOBİL KONTROLLER (Kaydırınca o yöne kilitlenir, dokununca bomba bırakır)
+        let tX, tY, startTime;
+        window.ontouchstart = e => { 
+            tX = e.touches[0].clientX; 
+            tY = e.touches[0].clientY; 
+            startTime = Date.now();
+        };
+        window.ontouchend = e => {
+            let dx = e.changedTouches[0].clientX - tX;
+            let dy = e.changedTouches[0].clientY - tY;
+            let duration = Date.now() - startTime;
+
+            if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && duration < 200) {
+                placeBomb(); // Kısa dokunuş bombadır
+            } else {
+                if(Math.abs(dx) > Math.abs(dy)) player.nextDir = dx > 0 ? {x:1,y:0} : {x:-1,y:0};
+                else player.nextDir = dy > 0 ? {x:0,y:1} : {x:0,y:-1};
+            }
+        };
+
+        // PC KONTROLLER
+        window.onkeydown = e => {
+            const k = { KeyW:{x:0,y:-1}, KeyS:{x:0,y:1}, KeyA:{x:-1,y:0}, KeyD:{x:1,y:0} };
+            if(k[e.code]) player.nextDir = k[e.code];
+            if(e.code === "Space") placeBomb();
+        };
+
+        function placeBomb() {
+            if(!gameStarted) return;
+            let bx = Math.round(player.x);
+            let by = Math.round(player.y);
+            if(player.bombs.length < 2) player.bombs.push({ x: bx, y: by, timer: 100 });
+        }
+
+        function update() {
+            if(!gameStarted) return;
+
+            // --- YÜRÜME MANTIĞI (Otomatik ve Hassas) ---
+            let cx = Math.round(player.x);
+            let cy = Math.round(player.y);
+
+            if(Math.abs(player.x - cx) < 0.1 && Math.abs(player.y - cy) < 0.1) {
+                if(map[cy + player.nextDir.y][cx + player.nextDir.x] === 0) {
+                    player.dir = {...player.nextDir};
+                    player.x = cx; player.y = cy;
+                }
+            }
+            let nX = player.x + player.dir.x * moveSpeed;
+            let nY = player.y + player.dir.y * moveSpeed;
+            if(map[Math.round(nY)][Math.round(nX)] === 0) {
+                player.x = nX; player.y = nY;
+            }
+
+            // --- BOMBA VE PATLAMA ---
+            player.bombs.forEach((b, i) => {
+                b.timer--;
+                if(b.timer <= 0) {
+                    executeExplosion(b.x, b.y);
+                    player.bombs.splice(i, 1);
+                }
+            });
+
+            explosions.forEach((ex, i) => {
+                ex.timer--;
+                if(ex.timer <= 0) explosions.splice(i, 1);
+            });
+
+            // --- CANAVARLAR ---
+            enemies.forEach(en => {
+                let enX = en.x + en.dir.x * enemySpeed;
+                let enY = en.y + en.dir.y * enemySpeed;
+                if(map[Math.round(enY)][Math.round(enX)] === 0) {
+                    en.x = enX; en.y = enY;
+                } else {
+                    let d = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+                    en.dir = d[Math.floor(Math.random()*4)];
+                }
+                if(Math.hypot(player.x - en.x, player.y - en.y) < 0.5) location.reload();
+            });
+        }
+
+        function executeExplosion(bx, by) {
+            let cells = [{x:bx, y:by}];
+            let dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+            dirs.forEach(d => {
+                for(let i=1; i<=2; i++) {
+                    let tx = bx + d.x * i; let ty = by + d.y * i;
+                    if(map[ty][tx] === 1) break;
+                    cells.push({x:tx, y:ty});
+                    if(map[ty][tx] === 2) { map[ty][tx] = 0; score += 20; break; }
+                }
+            });
+            explosions.push({cells, timer: 25});
+            scoreEl.innerText = score;
+        }
+
+        function draw() {
+            ctx.fillStyle = "#05050a"; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+            // Harita
+            for(let r=0; r<rows; r++) {
+                for(let c=0; c<cols; c++) {
+                    let x = c*size; let y = r*size;
+                    if(map[r][c] === 1) {
+                        ctx.strokeStyle = "#00fff2"; ctx.lineWidth = 2; ctx.strokeRect(x+4, y+4, size-8, size-8);
+                    } else if(map[r][c] === 2) {
+                        ctx.fillStyle = "#222"; ctx.fillRect(x+5, y+5, size-10, size-10);
+                        ctx.strokeStyle = "#444"; ctx.strokeRect(x+5, y+5, size-10, size-10);
+                    }
+                }
+            }
+
+            // Bombalar
+            player.bombs.forEach(b => {
+                ctx.fillStyle = "#ff0055"; ctx.shadowBlur = 15; ctx.shadowColor = "#ff0055";
+                ctx.beginPath(); ctx.arc(b.x*size+size/2, b.y*size+size/2, size/3, 0, Math.PI*2); ctx.fill();
+            });
+
+            // Patlama Efekti
+            explosions.forEach(ex => {
+                ctx.fillStyle = "rgba(255, 255, 255, 0.9)"; ctx.shadowBlur = 20; ctx.shadowColor = "#fff";
+                ex.cells.forEach(c => ctx.fillRect(c.x*size+4, c.y*size+4, size-8, size-8));
+            });
+
+            // Oyuncu
+            ctx.fillStyle = "#00ff00"; ctx.shadowBlur = 15; ctx.shadowColor = "#00ff00";
+            ctx.fillRect(player.x*size+size/4, player.y*size+size/4, size/2, size/2);
+
+            // Canavarlar
+            enemies.forEach(en => {
+                ctx.fillStyle = "#ffb8ff"; ctx.shadowBlur = 10; ctx.shadowColor = "#ffb8ff";
+                ctx.beginPath(); ctx.arc(en.x*size+size/2, en.y*size+size/2, size/3, 0, Math.PI*2); ctx.fill();
+            });
+
+            ctx.shadowBlur = 0;
+            update();
+            requestAnimationFrame(draw);
+        }
+        draw();
+    </script>
+</body>
+</html>
