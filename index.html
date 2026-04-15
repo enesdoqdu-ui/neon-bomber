@@ -1,211 +1,387 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>NEON BOMBER: PRECISION</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, landscape">
+    <title>NEON BOMBER: ULTIMATE PROTOCOL</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
-        body { margin: 0; background: #05050a; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; font-family: 'Orbitron', sans-serif; touch-action: none; color: #00fff2; }
-        #ui { position: absolute; top: 10px; text-align: center; width: 100%; text-shadow: 0 0 10px #00fff2; z-index: 5; }
-        canvas { box-shadow: 0 0 50px #ff005544; background: #000; border: 2px solid #1a1a4a; border-radius: 8px; }
-        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
-        #startBtn { padding: 20px 50px; font-family: 'Orbitron', sans-serif; font-size: 1.8rem; background: transparent; border: 3px solid #ffcc00; color: #ffcc00; cursor: pointer; border-radius: 15px; box-shadow: 0 0 20px #ffcc00; font-weight: 900; }
-        #startBtn:hover { background: #ffcc00; color: #000; }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        
+        body {
+            background-color: #000; color: #0ff; font-family: 'Orbitron', sans-serif;
+            margin: 0; overflow: hidden; touch-action: none; height: 100vh;
+            display: flex; flex-direction: column;
+        }
+
+        /* Top Panel */
+        #top-panel {
+            height: 60px; width: 100%;
+            background: linear-gradient(180deg, #111 0%, #050505 100%);
+            border-bottom: 2px solid #333;
+            display: flex; justify-content: space-around; align-items: center;
+            z-index: 100;
+        }
+
+        #bomb-hud {
+            width: 120px; height: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #ff0; overflow: hidden;
+        }
+        #bomb-hud-fill {
+            width: 0%; height: 100%; background: #ff0;
+            box-shadow: 0 0 10px #ff0;
+        }
+
+        /* Game Area */
+        #game-container {
+            flex-grow: 1; position: relative; overflow: hidden;
+            border-left: 8px solid #111; border-right: 8px solid #111;
+            background: #000;
+        }
+
+        /* Bottom Panel */
+        #bottom-panel {
+            height: 90px; width: 100%;
+            background: linear-gradient(0deg, #111 0%, #050505 100%);
+            border-top: 2px solid #333;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 20px; box-sizing: border-box;
+            z-index: 100;
+        }
+
+        #joystick-base {
+            position: absolute; width: 70px; height: 70px;
+            background: rgba(0, 255, 255, 0.1); border: 2px solid #0ff;
+            border-radius: 50%; display: none; pointer-events: none; z-index: 200;
+        }
+        #joystick-knob {
+            position: absolute; width: 30px; height: 30px;
+            background: #0ff; border-radius: 50%; transform: translate(-50%, -50%);
+        }
+
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.95); z-index: 300; text-align: center;
+        }
+
+        .btn {
+            margin: 10px; padding: 12px 35px; border: 2px solid #0ff;
+            background: transparent; color: #0ff; font-family: 'Orbitron';
+            cursor: pointer; transition: 0.3s; font-size: 0.9rem;
+        }
+        .btn:hover { background: rgba(0, 255, 255, 0.2); }
+
+        #how-to-modal {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.98); z-index: 400; padding: 20px; box-sizing: border-box;
+            flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        #damage-flash {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 0, 85, 0.2); display: none; pointer-events: none; z-index: 150;
+        }
+
+        .hud-label { font-size: 0.55rem; color: #666; letter-spacing: 1px; }
+        .hud-value { font-size: 0.9rem; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div id="overlay">
-        <h1 style="color:#ff0055; letter-spacing:10px; margin-bottom:20px;">NEON BOMBER</h1>
-        <button id="startBtn">BAŞLA</button>
-        <div style="color:#fff; opacity:0.6; margin-top:20px; font-size:0.8rem; text-align:center;">
-            KAYDIR: YÜRÜ | DOKUN: BOMBA<br>WASD: YÜRÜ | SPACE: BOMBA
+    <div id="top-panel">
+        <div style="text-align:center"><div class="hud-label">LEVEL</div><div class="hud-value" id="lvl">01</div></div>
+        <div style="text-align:center"><div class="hud-label">SCORE</div><div class="hud-value" id="score-val" style="color:#0ff">0000</div></div>
+        <div style="text-align:center"><div class="hud-label">ENERGY</div><div class="hud-value" id="hp-display">❤️❤️❤️</div></div>
+        <div style="text-align:center">
+            <div class="hud-label">BOMB CHARGE</div>
+            <div id="bomb-hud"><div id="bomb-hud-fill"></div></div>
         </div>
     </div>
 
-    <div id="ui">
-        <div style="font-size: 1.2rem;">SKOR: <span id="score">0</span></div>
+    <div id="game-container">
+        <div id="damage-flash"></div>
+        
+        <div id="start-screen" class="screen">
+            <h1 style="color:#0ff; text-shadow: 0 0 20px #0ff; margin-bottom: 20px;">NEON PROTOCOL</h1>
+            <button class="btn" onclick="initGame()">START SYSTEM</button>
+            <button class="btn" onclick="toggleHowTo(true)" style="border-color: #f0f; color: #f0f;">HOW TO PLAY</button>
+        </div>
+
+        <div id="how-to-modal">
+            <h2 style="color: #f0f;">MOBILE PROTOCOL</h2>
+            <ul style="text-align: left; font-size: 0.8rem; line-height: 1.8; color: #ccc;">
+                <li>🟦 <b style="color:#0ff">LEFT SIDE:</b> Touch & drag for <b style="color:#0ff">Joystick</b> control.</li>
+                <li>💣 <b style="color:#ff0">RIGHT SIDE:</b> <b style="color:#ff0">TAP</b> anywhere to drop a bomb.</li>
+                <li>🎯 <b style="color:#f0f">MISSION:</b> Eliminate red units and collect coins.</li>
+                <li>💎 <b style="color:#0ff">SCORE:</b> Coin = 1pt | Enemy = 10pts</li>
+            </ul>
+            <button class="btn" onclick="toggleHowTo(false)">UNDERSTOOD</button>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+        <div id="joystick-base"><div id="joystick-knob"></div></div>
     </div>
 
-    <canvas id="gameCanvas"></canvas>
+    <div id="bottom-panel">
+        <div style="text-align: left;"><div class="hud-label">RADAR</div><canvas id="miniMapCanvas" width="140" height="70"></canvas></div>
+        <div style="text-align:center">
+            <div class="hud-label">THREAT STATUS</div>
+            <div class="hud-value" id="enemy-count" style="color:#ff0">WAITING...</div>
+        </div>
+    </div>
 
-    <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-        const scoreEl = document.getElementById("score");
-        const overlay = document.getElementById("overlay");
-        const startBtn = document.getElementById("startBtn");
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const miniCanvas = document.getElementById('miniMapCanvas');
+    const mctx = miniCanvas.getContext('2d');
+    const joyBase = document.getElementById('joystick-base');
+    const joyKnob = document.getElementById('joystick-knob');
 
-        // 1: Duvar, 2: Kırılabilir, 0: Yol
-        let map = [
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,2,2,2,0,0,0,2,2,2,0,0,1],
-            [1,0,1,2,1,2,1,2,1,2,1,2,1,0,1],
-            [1,2,2,0,2,2,2,0,2,2,2,0,2,2,1],
-            [1,2,1,2,1,2,1,2,1,2,1,2,1,2,1],
-            [1,0,0,2,2,2,0,0,0,2,2,2,0,0,1],
-            [1,0,1,2,1,2,1,2,1,2,1,2,1,0,1],
-            [1,0,0,2,2,2,2,2,2,2,2,2,0,0,1],
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-        ];
+    const GRID = 40;
+    const MAP_COLS = 60, MAP_ROWS = 28;
+    
+    let viewW, viewH, state = 'START';
+    let level = 1, lives = 3, score = 0, shake = 0;
+    let map = [], bombs = [], enemies = [], fx = [], particles = [], collectibles = [];
 
-        const rows = map.length; const cols = map[0].length;
-        const size = Math.min(window.innerWidth / cols, window.innerHeight * 0.75 / rows);
-        canvas.width = cols * size; canvas.height = rows * size;
+    // Speed increased by ~15% (1.75 -> 2.0)
+    const player = { x: 0, y: 0, vx: 0, vy: 0, speed: 2.0 };
+    const camera = { x: 0, y: 0 };
 
-        let gameStarted = false;
-        let score = 0;
-        
-        // HIZ: İstediğin gibi yavaş ve dengeli
-        const moveSpeed = 0.06;
-        const enemySpeed = moveSpeed * 0.6;
+    function toggleHowTo(show) {
+        document.getElementById('how-to-modal').style.display = show ? 'flex' : 'none';
+    }
 
-        let player = { x: 1, y: 1, dir: {x:0, y:0}, nextDir: {x:0, y:0}, bombs: [] };
-        let enemies = [{ x: 13, y: 7, dir: {x:-1, y:0} }];
-        let explosions = [];
+    function resize() {
+        const container = document.getElementById('game-container');
+        viewW = container.clientWidth;
+        viewH = container.clientHeight;
+        canvas.width = viewW; canvas.height = viewH;
+    }
+    window.addEventListener('resize', resize);
+    resize();
 
-        startBtn.onclick = () => { overlay.style.display = "none"; gameStarted = true; };
-
-        // MOBİL KONTROLLER (Kaydırınca o yöne kilitlenir, dokununca bomba bırakır)
-        let tX, tY, startTime;
-        window.ontouchstart = e => { 
-            tX = e.touches[0].clientX; 
-            tY = e.touches[0].clientY; 
-            startTime = Date.now();
-        };
-        window.ontouchend = e => {
-            let dx = e.changedTouches[0].clientX - tX;
-            let dy = e.changedTouches[0].clientY - tY;
-            let duration = Date.now() - startTime;
-
-            if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && duration < 200) {
-                placeBomb(); // Kısa dokunuş bombadır
-            } else {
-                if(Math.abs(dx) > Math.abs(dy)) player.nextDir = dx > 0 ? {x:1,y:0} : {x:-1,y:0};
-                else player.nextDir = dy > 0 ? {x:0,y:1} : {x:0,y:-1};
+    function initLevelData() {
+        map = []; bombs = []; enemies = []; fx = []; particles = []; collectibles = [];
+        for (let r = 0; r < MAP_ROWS; r++) {
+            map[r] = [];
+            for (let c = 0; c < MAP_COLS; c++) {
+                if (r === 0 || r === MAP_ROWS-1 || c === 0 || c === MAP_COLS-1 || (r%2 === 0 && c%2 === 0)) map[r][c] = 1;
+                else if (Math.random() < 0.25) map[r][c] = 2;
+                else map[r][c] = 0;
             }
-        };
-
-        // PC KONTROLLER
-        window.onkeydown = e => {
-            const k = { KeyW:{x:0,y:-1}, KeyS:{x:0,y:1}, KeyA:{x:-1,y:0}, KeyD:{x:1,y:0} };
-            if(k[e.code]) player.nextDir = k[e.code];
-            if(e.code === "Space") placeBomb();
-        };
-
-        function placeBomb() {
-            if(!gameStarted) return;
-            let bx = Math.round(player.x);
-            let by = Math.round(player.y);
-            if(player.bombs.length < 2) player.bombs.push({ x: bx, y: by, timer: 100 });
         }
-
-        function update() {
-            if(!gameStarted) return;
-
-            // --- YÜRÜME MANTIĞI (Otomatik ve Hassas) ---
-            let cx = Math.round(player.x);
-            let cy = Math.round(player.y);
-
-            if(Math.abs(player.x - cx) < 0.1 && Math.abs(player.y - cy) < 0.1) {
-                if(map[cy + player.nextDir.y][cx + player.nextDir.x] === 0) {
-                    player.dir = {...player.nextDir};
-                    player.x = cx; player.y = cy;
-                }
-            }
-            let nX = player.x + player.dir.x * moveSpeed;
-            let nY = player.y + player.dir.y * moveSpeed;
-            if(map[Math.round(nY)][Math.round(nX)] === 0) {
-                player.x = nX; player.y = nY;
-            }
-
-            // --- BOMBA VE PATLAMA ---
-            player.bombs.forEach((b, i) => {
-                b.timer--;
-                if(b.timer <= 0) {
-                    executeExplosion(b.x, b.y);
-                    player.bombs.splice(i, 1);
-                }
-            });
-
-            explosions.forEach((ex, i) => {
-                ex.timer--;
-                if(ex.timer <= 0) explosions.splice(i, 1);
-            });
-
-            // --- CANAVARLAR ---
-            enemies.forEach(en => {
-                let enX = en.x + en.dir.x * enemySpeed;
-                let enY = en.y + en.dir.y * enemySpeed;
-                if(map[Math.round(enY)][Math.round(enX)] === 0) {
-                    en.x = enX; en.y = enY;
-                } else {
-                    let d = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
-                    en.dir = d[Math.floor(Math.random()*4)];
-                }
-                if(Math.hypot(player.x - en.x, player.y - en.y) < 0.5) location.reload();
+        player.x = GRID * 1.5; player.y = GRID * 1.5;
+        const enemyCount = Math.min(level + 3, 18);
+        for(let i=0; i < enemyCount; i++) {
+            enemies.push({
+                x: (MAP_COLS - 2) * GRID - 20,
+                y: (MAP_ROWS - 2) * GRID - 20 - (i * GRID),
+                vx: (1.1 + (level * 0.05)) * (Math.random() > 0.5 ? 1 : -1),
+                vy: (1.1 + (level * 0.05)) * (Math.random() > 0.5 ? 1 : -1)
             });
         }
+        updateUI();
+    }
 
-        function executeExplosion(bx, by) {
-            let cells = [{x:bx, y:by}];
-            let dirs = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
-            dirs.forEach(d => {
-                for(let i=1; i<=2; i++) {
-                    let tx = bx + d.x * i; let ty = by + d.y * i;
-                    if(map[ty][tx] === 1) break;
-                    cells.push({x:tx, y:ty});
-                    if(map[ty][tx] === 2) { map[ty][tx] = 0; score += 20; break; }
+    function isWall(nx, ny) {
+        const off = 12;
+        const pts = [{x:nx-off,y:ny-off}, {x:nx+off,y:ny-off}, {x:nx-off,y:ny+off}, {x:nx+off,y:ny+off}];
+        for(let p of pts) {
+            let c = Math.floor(p.x/GRID), r = Math.floor(p.y/GRID);
+            if(map[r] && map[r][c] !== 0) return true;
+        }
+        return false;
+    }
+
+    function triggerExplosion(bomb, index) {
+        bombs.splice(index, 1); shake = 15;
+        const dirs = [[0,0],[0,1],[0,-1],[1,0],[-1,0]];
+        dirs.forEach(d => {
+            for(let i=0; i <= 1; i++) {
+                let nr = bomb.r + d[0]*i, nc = bomb.c + d[1]*i;
+                if(map[nr] && map[nr][nc] === 1) break;
+                fx.push({c: nc, r: nr, life: 1.0});
+                
+                // Box destruction & Loot logic
+                if(map[nr] && map[nr][nc] === 2) { 
+                    map[nr][nc] = 0; 
+                    spawnLoot(nc*GRID + 20, nr*GRID + 20);
+                    break; 
                 }
-            });
-            explosions.push({cells, timer: 25});
-            scoreEl.innerText = score;
+                
+                // Enemy kill logic (10 points)
+                enemies = enemies.filter(e => {
+                    const hit = Math.floor(e.y/GRID) === nr && Math.floor(e.x/GRID) === nc;
+                    if(hit) score += 10;
+                    return !hit;
+                });
+                
+                if(Math.floor(player.y/GRID) === nr && Math.floor(player.x/GRID) === nc) takeDamage();
+            }
+        });
+        updateUI();
+    }
+
+    function spawnLoot(x, y) {
+        const rand = Math.random();
+        if(rand < 0.4) collectibles.push({x, y, type: 'coin'});
+        else if(rand < 0.43) collectibles.push({x, y, type: 'heart'});
+        else if(rand < 0.46) collectibles.push({x, y, type: 'range'});
+    }
+
+    function update() {
+        if(state !== 'PLAYING') return;
+
+        let tx = player.x - viewW/2, ty = player.y - viewH/2;
+        camera.x += (tx - camera.x) * 0.1;
+        camera.y += (ty - camera.y) * 0.1;
+        camera.x = Math.max(0, Math.min(camera.x, MAP_COLS*GRID - viewW));
+        camera.y = Math.max(0, Math.min(camera.y, MAP_ROWS*GRID - viewH));
+
+        if(shake > 0) { camera.x += (Math.random()-0.5)*shake; camera.y += (Math.random()-0.5)*shake; shake *= 0.9; }
+
+        let nx = player.x + player.vx, ny = player.y + player.vy;
+        if (!isWall(nx, ny)) { player.x = nx; player.y = ny; }
+
+        // Collectibles check
+        collectibles = collectibles.filter(c => {
+            if(Math.hypot(player.x - c.x, player.y - c.y) < 30) {
+                if(c.type === 'coin') score += 1;
+                if(c.type === 'heart') lives = Math.min(lives + 1, 5);
+                updateUI();
+                return false;
+            }
+            return true;
+        });
+
+        if(bombs.length > 0) {
+            bombs[0].t -= 16;
+            document.getElementById('bomb-hud-fill').style.width = (bombs[0].t/2000)*100+"%";
+            if(bombs[0].t <= 0) { triggerExplosion(bombs[0], 0); document.getElementById('bomb-hud-fill').style.width = "0%"; }
         }
 
-        function draw() {
-            ctx.fillStyle = "#05050a"; ctx.fillRect(0,0,canvas.width,canvas.height);
+        enemies.forEach(e => {
+            if(!isWall(e.x + e.vx, e.y)) e.x += e.vx; else e.vx *= -1;
+            if(!isWall(e.x, e.y + e.vy)) e.y += e.vy; else e.vy *= -1;
+            if(Math.hypot(player.x-e.x, player.y-e.y) < 25) takeDamage();
+        });
 
-            // Harita
-            for(let r=0; r<rows; r++) {
-                for(let c=0; c<cols; c++) {
-                    let x = c*size; let y = r*size;
-                    if(map[r][c] === 1) {
-                        ctx.strokeStyle = "#00fff2"; ctx.lineWidth = 2; ctx.strokeRect(x+4, y+4, size-8, size-8);
-                    } else if(map[r][c] === 2) {
-                        ctx.fillStyle = "#222"; ctx.fillRect(x+5, y+5, size-10, size-10);
-                        ctx.strokeStyle = "#444"; ctx.strokeRect(x+5, y+5, size-10, size-10);
-                    }
+        if(enemies.length === 0) { level++; initLevelData(); }
+    }
+
+    function draw() {
+        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, viewW, viewH);
+        ctx.save();
+        ctx.translate(-camera.x, -camera.y);
+
+        for(let r=0; r<MAP_ROWS; r++) {
+            for(let c=0; c<MAP_COLS; c++) {
+                if(map[r][c] === 1) { ctx.strokeStyle = '#1a1a1a'; ctx.strokeRect(c*GRID+12, r*GRID+12, 16, 16); }
+                else if(map[r][c] === 2) { ctx.strokeStyle = '#f0f'; ctx.strokeRect(c*GRID+5, r*GRID+5, 30, 30); }
+            }
+        }
+
+        collectibles.forEach(c => {
+            ctx.fillStyle = c.type === 'coin' ? '#ff0' : (c.type === 'heart' ? '#f05' : '#0ff');
+            ctx.beginPath(); ctx.arc(c.x, c.y, 6, 0, Math.PI*2); ctx.fill();
+        });
+
+        bombs.forEach(b => {
+            ctx.fillStyle = b.t < 500 ? '#f00' : '#ff0';
+            ctx.beginPath(); ctx.arc(b.c*GRID+20, b.r*GRID+20, 14, 0, Math.PI*2); ctx.fill();
+        });
+
+        fx.forEach(f => { ctx.fillStyle = `rgba(255,255,255,${f.life -= 0.04})`; ctx.fillRect(f.c*GRID, f.r*GRID, GRID, GRID); });
+        enemies.forEach(e => { ctx.fillStyle = '#f00'; ctx.fillRect(e.x-12, e.y-12, 24, 24); });
+
+        ctx.fillStyle = '#0ff'; ctx.shadowBlur = 15; ctx.shadowColor = '#0ff';
+        ctx.fillRect(player.x-15, player.y-15, 30, 30);
+        ctx.restore();
+
+        drawMiniMap();
+        update();
+        requestAnimationFrame(draw);
+    }
+
+    function drawMiniMap() {
+        mctx.fillStyle = '#000'; mctx.fillRect(0,0,140,70);
+        const sx = 140/(MAP_COLS*GRID), sy = 70/(MAP_ROWS*GRID);
+        mctx.fillStyle = '#111';
+        for(let r=0; r<MAP_ROWS; r++) for(let c=0; c<MAP_COLS; c++) if(map[r][c]!==0) mctx.fillRect(c*GRID*sx, r*GRID*sy, 2, 2);
+        mctx.fillStyle = '#f00'; enemies.forEach(e => mctx.fillRect(e.x*sx, e.y*sy, 2, 2));
+        mctx.fillStyle = '#0ff'; mctx.fillRect(player.x*sx, player.y*sy, 3, 3);
+    }
+
+    function takeDamage() {
+        lives--; updateUI(); shake = 30;
+        document.getElementById('damage-flash').style.display = 'block';
+        setTimeout(() => document.getElementById('damage-flash').style.display = 'none', 100);
+        if(lives <= 0) location.reload();
+        else { player.x = GRID * 1.5; player.y = GRID * 1.5; player.vx = 0; player.vy = 0; }
+    }
+
+    function updateUI() {
+        document.getElementById('lvl').innerText = (level < 10 ? "0" + level : level);
+        document.getElementById('score-val').innerText = score.toString().padStart(4, '0');
+        document.getElementById('hp-display').innerText = "❤️".repeat(lives);
+        document.getElementById('enemy-count').innerText = enemies.length + " UNITS";
+    }
+
+    function initGame() { document.getElementById('start-screen').style.display='none'; state='PLAYING'; initLevelData(); draw(); }
+
+    let joyTouchId = null;
+    const gContainer = document.getElementById('game-container');
+
+    gContainer.addEventListener('touchstart', e => {
+        for(let touch of e.changedTouches) {
+            const rect = gContainer.getBoundingClientRect();
+            const relX = touch.clientX - rect.left;
+            if(relX < viewW / 2) { 
+                joyTouchId = touch.identifier;
+                joyBase.style.display = 'block';
+                joyBase.style.left = relX - 35 + 'px';
+                joyBase.style.top = (touch.clientY - rect.top) - 35 + 'px';
+            } else { 
+                if(state === 'PLAYING' && bombs.length === 0) {
+                    let r = Math.floor(player.y/GRID), c = Math.floor(player.x/GRID);
+                    bombs.push({r, c, t: 2000});
                 }
             }
-
-            // Bombalar
-            player.bombs.forEach(b => {
-                ctx.fillStyle = "#ff0055"; ctx.shadowBlur = 15; ctx.shadowColor = "#ff0055";
-                ctx.beginPath(); ctx.arc(b.x*size+size/2, b.y*size+size/2, size/3, 0, Math.PI*2); ctx.fill();
-            });
-
-            // Patlama Efekti
-            explosions.forEach(ex => {
-                ctx.fillStyle = "rgba(255, 255, 255, 0.9)"; ctx.shadowBlur = 20; ctx.shadowColor = "#fff";
-                ex.cells.forEach(c => ctx.fillRect(c.x*size+4, c.y*size+4, size-8, size-8));
-            });
-
-            // Oyuncu
-            ctx.fillStyle = "#00ff00"; ctx.shadowBlur = 15; ctx.shadowColor = "#00ff00";
-            ctx.fillRect(player.x*size+size/4, player.y*size+size/4, size/2, size/2);
-
-            // Canavarlar
-            enemies.forEach(en => {
-                ctx.fillStyle = "#ffb8ff"; ctx.shadowBlur = 10; ctx.shadowColor = "#ffb8ff";
-                ctx.beginPath(); ctx.arc(en.x*size+size/2, en.y*size+size/2, size/3, 0, Math.PI*2); ctx.fill();
-            });
-
-            ctx.shadowBlur = 0;
-            update();
-            requestAnimationFrame(draw);
         }
-        draw();
-    </script>
+    });
+
+    gContainer.addEventListener('touchmove', e => {
+        e.preventDefault();
+        for(let touch of e.changedTouches) {
+            if(touch.identifier === joyTouchId) {
+                const rect = gContainer.getBoundingClientRect();
+                const bx = parseInt(joyBase.style.left) + 35;
+                const by = parseInt(joyBase.style.top) + 35;
+                const dx = (touch.clientX - rect.left) - bx;
+                const dy = (touch.clientY - rect.top) - by;
+                const angle = Math.atan2(dy, dx);
+                const dist = Math.min(35, Math.hypot(dx, dy));
+                joyKnob.style.left = 50 + (Math.cos(angle) * dist / 35 * 50) + '%';
+                joyKnob.style.top = 50 + (Math.sin(angle) * dist / 35 * 50) + '%';
+                player.vx = Math.cos(angle) * player.speed * (dist/35);
+                player.vy = Math.sin(angle) * player.speed * (dist/35);
+            }
+        }
+    }, {passive: false});
+
+    gContainer.addEventListener('touchend', e => {
+        for(let touch of e.changedTouches) {
+            if(touch.identifier === joyTouchId) {
+                joyTouchId = null;
+                joyBase.style.display = 'none';
+                player.vx = 0; player.vy = 0;
+            }
+        }
+    });
+
+</script>
 </body>
 </html>
