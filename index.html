@@ -1,364 +1,289 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, landscape">
-    <title>NEON BOMBER: UNLEASHED</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-        
-        :root { --bg: #000; --panel: #050505; --text: #0ff; --border: #333; }
-        .day-mode { --bg: #e0e0e0; --panel: #f5f5f5; --text: #000; --border: #999; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NEON BOMBER: UNLEASHED</title>
 
-        body {
-            background-color: var(--bg); color: var(--text); font-family: 'Orbitron', sans-serif;
-            margin: 0; overflow: hidden; touch-action: none; height: 100vh;
-            display: flex; flex-direction: column; transition: background 0.3s;
-        }
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
 
-        #top-panel {
-            height: 55px; width: 100%; background: var(--panel);
-            border-bottom: 3px solid var(--border);
-            display: flex; justify-content: space-around; align-items: center; z-index: 100;
-        }
+:root {
+    --bg:#000; --panel:#050505; --text:#0ff; --border:#333;
+}
+.day-mode {
+    --bg:#e0e0e0; --panel:#f5f5f5; --text:#000; --border:#999;
+}
 
-        #game-container { flex-grow: 1; position: relative; overflow: hidden; background: var(--bg); }
+body {
+    margin:0;
+    height:100vh;
+    overflow:hidden;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Orbitron',sans-serif;
+    display:flex;
+    flex-direction:column;
+    touch-action:none;
+}
 
-        .mode-btn {
-            background: var(--text); color: var(--bg); border: none;
-            padding: 5px 12px; font-family: 'Orbitron'; font-weight: bold; cursor: pointer;
-            border-radius: 4px; font-size: 0.7rem; box-shadow: 0 0 10px var(--text);
-        }
+#top-panel,#bottom-panel {
+    background:var(--panel);
+    border:3px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:space-around;
+}
 
-        #bottom-panel {
-            height: 80px; width: 100%; background: var(--panel);
-            border-top: 3px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 15px; box-sizing: border-box; z-index: 100;
-        }
+#top-panel { height:55px; border-top:none; }
+#bottom-panel { height:80px; border-bottom:none; }
 
-        .screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: var(--bg); opacity: 0.98; z-index: 300;
-        }
+#game-container {
+    flex:1;
+    position:relative;
+    overflow:hidden;
+}
 
-        .btn {
-            margin: 10px; padding: 15px 40px; border: 3px solid var(--text);
-            background: transparent; color: var(--text); font-family: 'Orbitron'; font-weight: bold;
-            font-size: 1.1rem;
-        }
+canvas { display:block; }
 
-        #damage-flash {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 0, 0, 0.4); display: none; pointer-events: none; z-index: 150;
-        }
+.screen {
+    position:absolute;
+    inset:0;
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    z-index:10;
+}
 
-        .hud-label { font-size: 0.6rem; color: var(--text); opacity: 0.7; }
-        .hud-value { font-size: 0.9rem; font-weight: 700; color: var(--text); }
-        
-        #swipe-dot {
-            position: absolute; width: 24px; height: 24px; border: 2px solid var(--text);
-            border-radius: 50%; display: none; pointer-events: none; z-index: 200;
-        }
-    </style>
+.btn {
+    padding:15px 40px;
+    border:3px solid var(--text);
+    background:none;
+    color:var(--text);
+    font-family:Orbitron;
+    font-size:1.1rem;
+}
+
+.mode-btn {
+    background:var(--text);
+    color:var(--bg);
+    border:none;
+    padding:8px 14px;
+    font-weight:bold;
+    border-radius:6px;
+}
+
+.hud-label { font-size:0.6rem; opacity:.7; }
+.hud-value { font-size:1rem; font-weight:bold; }
+
+#damage-flash {
+    position:absolute;
+    inset:0;
+    background:rgba(255,0,0,.4);
+    display:none;
+    z-index:5;
+    pointer-events:none;
+}
+</style>
 </head>
+
 <body>
 
-    <div id="top-panel">
-        <div style="text-align:center"><div class="hud-label">LEVEL</div><div class="hud-value" id="lvl">01</div></div>
-        <div style="text-align:center"><div class="hud-label">SCORE</div><div class="hud-value" id="score-val">0000</div></div>
-        <button class="mode-btn" onclick="toggleDisplayMode()">COLOR MODE</button>
-        <div style="text-align:center"><div class="hud-label">ENERGY</div><div class="hud-value" id="hp-display">❤️❤️❤️</div></div>
-    </div>
+<div id="top-panel">
+    <div><div class="hud-label">LEVEL</div><div class="hud-value" id="lvl">01</div></div>
+    <div><div class="hud-label">SCORE</div><div class="hud-value" id="score-val">0000</div></div>
+    <button class="mode-btn" onclick="toggleDisplayMode()">COLOR</button>
+    <div><div class="hud-label">ENERGY</div><div class="hud-value" id="hp-display">❤️❤️❤️</div></div>
+</div>
 
-    <div id="game-container">
-        <div id="damage-flash"></div>
-        <div id="swipe-dot"></div>
-        <div id="start-screen" class="screen">
-            <h1 style="font-size: 2.2rem; text-shadow: 0 0 20px var(--text);">PROTOCOL X</h1>
-            <p style="font-size: 0.8rem; margin: 15px 0;">TAP TO BOMB | SWIPE TO MOVE</p>
-            <button class="btn" onclick="initGame()">BOOT SYSTEM</button>
-        </div>
-        <canvas id="gameCanvas"></canvas>
+<div id="game-container">
+    <div id="damage-flash"></div>
+    <div id="start-screen" class="screen">
+        <h1>PROTOCOL X</h1>
+        <p>1sn BAS → BOMBA<br>KAYDIR → HAREKET</p>
+        <button class="btn" onclick="initGame()">START</button>
     </div>
+    <canvas id="gameCanvas"></canvas>
+</div>
 
-    <div id="bottom-panel">
-        <div style="display:flex; align-items:center; gap:10px;">
-            <div class="hud-label">RADAR</div>
-            <canvas id="miniMapCanvas" width="90" height="45" style="border: 1px solid var(--border)"></canvas>
-        </div>
-        <div style="text-align:right">
-            <div class="hud-label">HOSTILES</div>
-            <div class="hud-value" id="enemy-count" style="color: #f00;">0</div>
-        </div>
+<div id="bottom-panel">
+    <canvas id="miniMapCanvas" width="90" height="45"></canvas>
+    <div>
+        <div class="hud-label">HOSTILES</div>
+        <div class="hud-value" id="enemy-count" style="color:#f00">0</div>
     </div>
+</div>
 
 <script>
-    // --- IMPROVED AUDIO ENGINE ---
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playSound(type) {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        const now = audioCtx.currentTime;
+/* ================= AUDIO ================= */
+const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+function playSound(t){
+    if(audioCtx.state==='suspended')audioCtx.resume();
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    const n=audioCtx.currentTime;
+    o.type='sine';o.frequency.setValueAtTime(t==='boom'?80:600,n);
+    g.gain.setValueAtTime(.3,n);
+    g.gain.exponentialRampToValueAtTime(.01,n+.3);
+    o.start();o.stop(n+.3);
+}
 
-        if (type === 'bomb_drop') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(300, now);
-            osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.linearRampToValueAtTime(0, now + 0.1);
-            osc.start(); osc.stop(now + 0.1);
-        } else if (type === 'boom') {
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(100, now);
-            osc.frequency.linearRampToValueAtTime(30, now + 0.5);
-            gain.gain.setValueAtTime(0.4, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-            osc.start(); osc.stop(now + 0.5);
-        } else if (type === 'hit') {
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(80, now);
-            gain.gain.setValueAtTime(0.5, now);
-            gain.gain.linearRampToValueAtTime(0, now + 0.3);
-            osc.start(); osc.stop(now + 0.3);
-        } else if (type === 'score') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(900, now);
-            osc.frequency.exponentialRampToValueAtTime(1400, now + 0.05);
-            gain.gain.setValueAtTime(0.1, now);
-            gain.gain.linearRampToValueAtTime(0, now + 0.1);
-            osc.start(); osc.stop(now + 0.1);
+/* ================= GAME CORE ================= */
+const canvas=document.getElementById('gameCanvas');
+const ctx=canvas.getContext('2d');
+const mini=document.getElementById('miniMapCanvas');
+const mctx=mini.getContext('2d');
+
+const GRID=40, MAP_COLS=32, MAP_ROWS=18, ZOOM=1.9;
+
+let state='START', level=1, lives=3, score=0;
+let map=[], bombs=[], enemies=[], fx=[];
+let viewW,viewH;
+
+const player={x:60,y:60,vx:0,vy:0,speed:2.8};
+const camera={x:0,y:0};
+
+function resize(){
+    viewW=canvas.width=document.getElementById('game-container').clientWidth;
+    viewH=canvas.height=document.getElementById('game-container').clientHeight;
+}
+window.addEventListener('resize',resize);resize();
+
+function toggleDisplayMode(){
+    document.body.classList.toggle('day-mode');
+}
+
+function initLevel(){
+    map=[];bombs=[];enemies=[];
+    for(let r=0;r<MAP_ROWS;r++){
+        map[r]=[];
+        for(let c=0;c<MAP_COLS;c++){
+            map[r][c]=(r==0||c==0||r==MAP_ROWS-1||c==MAP_COLS-1||(r%2==0&&c%2==0))?1:Math.random()<.2?2:0;
         }
     }
-
-    // --- CORE GAME ---
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const miniCanvas = document.getElementById('miniMapCanvas');
-    const mctx = miniCanvas.getContext('2d');
-    const swipeDot = document.getElementById('swipe-dot');
-
-    const GRID = 40;
-    const MAP_COLS = 32, MAP_ROWS = 18; 
-    const ZOOM = 1.9; // Hatta biraz daha yakınlaştırdım, daha net!
-
-    let viewW, viewH, state = 'START', isDayMode = false;
-    let level = 1, lives = 3, score = 0, shake = 0;
-    let map = [], bombs = [], enemies = [], fx = [];
-
-    const player = { x: 0, y: 0, vx: 0, vy: 0, speed: 2.6 };
-    const camera = { x: 0, y: 0 };
-
-    function toggleDisplayMode() {
-        isDayMode = !isDayMode;
-        document.body.classList.toggle('day-mode');
-        playSound('bomb_drop');
+    player.x=60;player.y=60;
+    for(let i=0;i<Math.min(5+level,10);i++){
+        enemies.push({x:GRID*(MAP_COLS-2),y:GRID*(MAP_ROWS-2),vx:1.5,vy:1.5});
     }
+    ui();
+}
 
-    function resize() {
-        const container = document.getElementById('game-container');
-        viewW = container.clientWidth; viewH = container.clientHeight;
-        canvas.width = viewW; canvas.height = viewH;
+function isWall(x,y){
+    const o=14;
+    const pts=[[x-o,y-o],[x+o,y-o],[x-o,y+o],[x+o,y+o]];
+    for(const p of pts){
+        const c=Math.floor(p[0]/GRID),r=Math.floor(p[1]/GRID);
+        if(map[r]&&map[r][c]!==0)return true;
     }
-    window.addEventListener('resize', resize);
-    resize();
+    return false;
+}
 
-    function initLevelData() {
-        map = []; bombs = []; enemies = []; fx = [];
-        for (let r = 0; r < MAP_ROWS; r++) {
-            map[r] = [];
-            for (let c = 0; c < MAP_COLS; c++) {
-                if (r === 0 || r === MAP_ROWS-1 || c === 0 || c === MAP_COLS-1 || (r%2 === 0 && c%2 === 0)) map[r][c] = 1;
-                else if (Math.random() < 0.22) map[r][c] = 2;
-                else map[r][c] = 0;
-            }
+function update(){
+    let nx=player.x+player.vx, ny=player.y+player.vy;
+    if(!isWall(nx,ny)){player.x=nx;player.y=ny;}
+
+    player.vx*=0.85; player.vy*=0.85;
+    if(Math.abs(player.vx)<.05)player.vx=0;
+    if(Math.abs(player.vy)<.05)player.vy=0;
+
+    camera.x=player.x-viewW/(2*ZOOM);
+    camera.y=player.y-viewH/(2*ZOOM);
+
+    bombs.length&&((bombs[0].t-=16)<=0)&&explode(bombs.shift());
+}
+
+function explode(b){
+    playSound('boom');
+    [[0,0],[1,0],[-1,0],[0,1],[0,-1]].forEach(d=>{
+        for(let i=0;i<2;i++){
+            let r=b.r+d[1]*i,c=b.c+d[0]*i;
+            if(map[r]&&map[r][c]==1)break;
+            map[r][c]==2&&(map[r][c]=0,score+=2);
         }
-        player.x = GRID * 1.5; player.y = GRID * 1.5;
-        const count = Math.min(level + 3, 12);
-        for(let i=0; i < count; i++) {
-            enemies.push({
-                x: (MAP_COLS - 2) * GRID - 20,
-                y: (MAP_ROWS - 2) * GRID - 20,
-                vx: (1.5 + (level * 0.1)) * (Math.random() > 0.5 ? 1 : -1),
-                vy: (1.5 + (level * 0.1)) * (Math.random() > 0.5 ? -1 : 1)
-            });
-        }
-        updateUI();
+    });
+    ui();
+}
+
+function draw(){
+    ctx.clearRect(0,0,viewW,viewH);
+    ctx.save();
+    ctx.scale(ZOOM,ZOOM);
+    ctx.translate(-camera.x,-camera.y);
+
+    for(let r=0;r<MAP_ROWS;r++)for(let c=0;c<MAP_COLS;c++){
+        if(map[r][c]==1){ctx.fillStyle='#222';ctx.fillRect(c*GRID,r*GRID,GRID,GRID);}
+        if(map[r][c]==2){ctx.strokeStyle='#f0f';ctx.strokeRect(c*GRID+8,r*GRID+8,24,24);}
     }
 
-    function isWall(nx, ny) {
-        const off = 14; 
-        const pts = [{x:nx-off,y:ny-off}, {x:nx+off,y:ny-off}, {x:nx-off,y:ny+off}, {x:nx+off,y:ny+off}];
-        for(let p of pts) {
-            let c = Math.floor(p.x/GRID), r = Math.floor(p.y/GRID);
-            if(map[r] && map[r][c] !== 0) return true;
-        }
-        return false;
-    }
-
-    function triggerExplosion(bomb, index) {
-        bombs.splice(index, 1); shake = 18;
-        playSound('boom');
-        const dirs = [[0,0],[0,1],[0,-1],[1,0],[-1,0]];
-        dirs.forEach(d => {
-            for(let i=0; i <= 1; i++) {
-                let nr = bomb.r + d[0]*i, nc = bomb.c + d[1]*i;
-                if(map[nr] && map[nr][nc] === 1) break;
-                fx.push({c: nc, r: nr, life: 1.0});
-                if(map[nr] && map[nr][nc] === 2) { map[nr][nc] = 0; score += 2; playSound('score'); break; }
-                enemies = enemies.filter(e => {
-                    let hit = Math.floor(e.y/GRID) === nr && Math.floor(e.x/GRID) === nc;
-                    if(hit) { score += 10; playSound('score'); }
-                    return !hit;
-                });
-                if(Math.floor(player.y/GRID) === nr && Math.floor(player.x/GRID) === nc) takeDamage();
-            }
-        });
-        updateUI();
-    }
-
-    function update() {
-        if(state !== 'PLAYING') return;
-        let nx = player.x + player.vx, ny = player.y + player.vy;
-        if (!isWall(nx, ny)) { player.x = nx; player.y = ny; }
-
-        let tx = player.x - (viewW / 2) / ZOOM, ty = player.y - (viewH / 2) / ZOOM;
-        camera.x += (tx - camera.x) * 0.1; camera.y += (ty - camera.y) * 0.1;
-        camera.x = Math.max(0, Math.min(camera.x, MAP_COLS*GRID - viewW/ZOOM));
-        camera.y = Math.max(0, Math.min(camera.y, MAP_ROWS*GRID - viewH/ZOOM));
-
-        if(shake > 0) { camera.x += (Math.random()-0.5)*shake; camera.y += (Math.random()-0.5)*shake; shake *= 0.8; }
-        if(bombs.length > 0 && (bombs[0].t -= 16) <= 0) triggerExplosion(bombs[0], 0);
-
-        enemies.forEach(e => {
-            if(!isWall(e.x + e.vx, e.y)) e.x += e.vx; else e.vx *= -1;
-            if(!isWall(e.x, e.y + e.vy)) e.y += e.vy; else e.vy *= -1;
-            if(Math.hypot(player.x-e.x, player.y-e.y) < 22) takeDamage();
-        });
-
-        fx = fx.filter(f => (f.life -= 0.06) > 0);
-        if(enemies.length === 0) { level++; initLevelData(); }
-    }
-
-    function draw() {
-        ctx.clearRect(0, 0, viewW, viewH);
-        ctx.save();
-        ctx.scale(ZOOM, ZOOM);
-        ctx.translate(-camera.x, -camera.y);
-
-        for(let r=0; r<MAP_ROWS; r++) {
-            for(let c=0; c<MAP_COLS; c++) {
-                if(map[r][c] === 1) { 
-                    ctx.fillStyle = isDayMode ? '#000' : '#222';
-                    ctx.fillRect(c*GRID+2, r*GRID+2, 36, 36);
-                } else if(map[r][c] === 2) {
-                    ctx.strokeStyle = '#f0f'; ctx.lineWidth = 3;
-                    ctx.strokeRect(c*GRID+8, r*GRID+8, 24, 24);
-                }
-            }
-        }
-
-        bombs.forEach(b => {
-            ctx.fillStyle = b.t < 500 ? '#f00' : '#ff0';
-            ctx.beginPath(); ctx.arc(b.c*GRID+20, b.r*GRID+20, 15, 0, Math.PI*2); ctx.fill();
-            ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
-        });
-
-        fx.forEach(f => {
-            ctx.fillStyle = isDayMode ? `rgba(0,0,0,${f.life})` : `rgba(255,255,255,${f.life})`;
-            ctx.fillRect(f.c*GRID, f.r*GRID, GRID, GRID);
-        });
-        
-        enemies.forEach(e => {
-            ctx.fillStyle = '#f00'; ctx.fillRect(e.x-13, e.y-13, 26, 26);
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(e.x-13, e.y-13, 26, 26);
-        });
-
-        ctx.fillStyle = isDayMode ? '#0077ff' : '#0ff';
-        ctx.fillRect(player.x-14, player.y-14, 28, 28);
-        ctx.strokeStyle = isDayMode ? '#000' : '#fff'; ctx.lineWidth = 3;
-        ctx.strokeRect(player.x-14, player.y-14, 28, 28);
-        
-        ctx.restore();
-        drawMiniMap(); update(); requestAnimationFrame(draw);
-    }
-
-    function drawMiniMap() {
-        mctx.fillStyle = isDayMode ? '#fff' : '#000'; mctx.fillRect(0,0,90,45);
-        const sx = 90/(MAP_COLS*GRID), sy = 45/(MAP_ROWS*GRID);
-        mctx.fillStyle = isDayMode ? '#ddd' : '#333';
-        for(let r=0; r<MAP_ROWS; r++) for(let c=0; c<MAP_COLS; c++) if(map[r][c]!==0) mctx.fillRect(c*GRID*sx, r*GRID*sy, 2, 2);
-        mctx.fillStyle = '#f00'; enemies.forEach(e => mctx.fillRect(e.x*sx, e.y*sy, 3, 3));
-        mctx.fillStyle = '#0ff'; mctx.fillRect(player.x*sx, player.y*sy, 4, 4);
-    }
-
-    function takeDamage() {
-        lives--; updateUI(); shake = 30;
-        playSound('hit');
-        document.getElementById('damage-flash').style.display = 'block';
-        setTimeout(() => document.getElementById('damage-flash').style.display = 'none', 100);
-        if(lives <= 0) location.reload();
-        else { player.x = GRID*1.5; player.y = GRID*1.5; player.vx = 0; player.vy = 0; }
-    }
-
-    function updateUI() {
-        document.getElementById('lvl').innerText = (level < 10 ? "0"+level : level);
-        document.getElementById('score-val').innerText = score.toString().padStart(4, '0');
-        document.getElementById('hp-display').innerText = "❤️".repeat(lives);
-        document.getElementById('enemy-count').innerText = enemies.length;
-    }
-
-    function initGame() { 
-        audioCtx.resume();
-        playSound('score');
-        document.getElementById('start-screen').style.display='none'; 
-        state='PLAYING'; 
-        initLevelData(); 
-        draw(); 
-    }
-
-    // --- NEW FREE TOUCH ENGINE (TAP ANYWHERE TO BOMB, SWIPE TO MOVE) ---
-    let startX = 0, startY = 0;
-    const gContainer = document.getElementById('game-container');
-
-    gContainer.addEventListener('touchstart', e => {
-        const touch = e.touches[0];
-        const rect = gContainer.getBoundingClientRect();
-        
-        // BOMB DROP: Nereye dokunursan dokun bomba bırak!
-        if(state === 'PLAYING' && bombs.length === 0) {
-            bombs.push({r: Math.floor(player.y/GRID), c: Math.floor(player.x/GRID), t: 1500});
-            playSound('bomb_drop');
-        }
-
-        // MOVE START: Kaydırma için başlangıç noktasını al
-        startX = touch.clientX; startY = touch.clientY;
-        swipeDot.style.display = 'block';
-        swipeDot.style.left = (touch.clientX - rect.left - 12) + 'px';
-        swipeDot.style.top = (touch.clientY - rect.top - 12) + 'px';
+    bombs.forEach(b=>{
+        ctx.fillStyle='#ff0';
+        ctx.beginPath();
+        ctx.arc(b.c*GRID+20,b.r*GRID+20,14,0,Math.PI*2);
+        ctx.fill();
     });
 
-    gContainer.addEventListener('touchmove', e => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const dx = touch.clientX - startX, dy = touch.clientY - startY;
-        const dist = Math.hypot(dx, dy);
-        
-        if(dist > 5) {
-            const angle = Math.atan2(dy, dx);
-            const moveDist = Math.min(1, dist / 40);
-            player.vx = Math.cos(angle) * player.speed * moveDist;
-            player.vy = Math.sin(angle) * player.speed * moveDist;
+    ctx.fillStyle='#0ff';
+    ctx.fillRect(player.x-14,player.y-14,28,28);
+
+    ctx.restore();
+    update();
+    requestAnimationFrame(draw);
+}
+
+function ui(){
+    lvl.textContent=String(level).padStart(2,'0');
+    score-val.textContent=String(score).padStart(4,'0');
+    hp-display.textContent='❤️'.repeat(lives);
+    enemy-count.textContent=enemies.length;
+}
+
+function initGame(){
+    state='PLAYING';
+    document.getElementById('start-screen').style.display='none';
+    initLevel();
+    draw();
+}
+
+/* ================= TOUCH CONTROLS ================= */
+let sx=0,sy=0,holding=false,holdTimer=null;
+const HOLD=1000, SWIPE=20;
+
+const gc=document.getElementById('game-container');
+
+gc.addEventListener('touchstart',e=>{
+    if(state!=='PLAYING')return;
+    const t=e.touches[0];
+    sx=t.clientX; sy=t.clientY; holding=true;
+    holdTimer=setTimeout(()=>{
+        if(holding&&bombs.length===0){
+            bombs.push({r:Math.floor(player.y/GRID),c:Math.floor(player.x/GRID),t:1500});
+            navigator.vibrate?.(40); playSound('bomb');
         }
-    }, {passive: false});
+    },HOLD);
+},{passive:true});
 
-    gContainer.addEventListener('touchend', () => {
-        player.vx = 0; player.vy = 0; swipeDot.style.display = 'none';
-    });
+gc.addEventListener('touchmove',e=>{
+    if(!holding)return;
+    const t=e.touches[0];
+    const dx=t.clientX-sx, dy=t.clientY-sy;
+    if(Math.hypot(dx,dy)<SWIPE)return;
 
+    clearTimeout(holdTimer); holding=false;
+
+    if(Math.abs(dx)>Math.abs(dy)){
+        player.vx=dx>0?player.speed:-player.speed; player.vy=0;
+    }else{
+        player.vy=dy>0?player.speed:-player.speed; player.vx=0;
+    }
+},{passive:true});
+
+gc.addEventListener('touchend',()=>{
+    clearTimeout(holdTimer);
+    holding=false;
+    player.vx=0; player.vy=0;
+});
 </script>
 </body>
 </html>
